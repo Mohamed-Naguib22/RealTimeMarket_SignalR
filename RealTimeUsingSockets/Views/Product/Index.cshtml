@@ -1,0 +1,83 @@
+﻿@using RealTimeUsingSockets.Application.Dtos.ProductDtos
+@model IEnumerable<GetProductDto>
+
+<div class="mt-4">
+    <div id="productTable">
+        <table class="table table-striped table-bordered">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Price</th>
+                    <th>Number Of Items In Stock</th>
+                    <th>Number Of Items Sold</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var product in Model)
+                {
+                    <tr id="product-@product.Id">
+                        <td>@product.Name</td>
+                        <td>@product.Price</td>
+                        <td>@product.NumberOfItemsInStock</td>
+                        <td>@product.NumberOfSales</td>
+                        <td>
+                            <a asp-action="Delete" asp-route-productId="@product.Id" asp-controller="Product" class="btn btn-outline-danger" type="submit">Delete</a>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="mt-3">
+    <p id="mostSoldProductText">Most sold product is: @(Model.OrderByDescending(p => p.NumberOfSales).FirstOrDefault().Name)</p>
+</div>
+
+<div class="d-flex justify-content-between">
+    <a asp-action="Create" asp-controller="Product" class="btn btn-outline-primary" type="submit">Add Product</a>
+</div>
+
+@section Scripts{
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/3.1.14/signalr.min.js"></script>
+    <script>
+        const connection = new signalR.HubConnectionBuilder().withUrl("/productUpdates").build();
+        
+        connection.on("AddProduct", function (product) {
+            const table = document.getElementById("productTable").getElementsByTagName('tbody')[0];
+
+            const newRow = table.insertRow();
+            newRow.setAttribute('data-id', product.id);
+            newRow.insertCell(0).innerText = product.name;
+            newRow.insertCell(1).innerText = product.price;
+            newRow.insertCell(2).innerText = product.numberOfItemsInStock;
+            newRow.insertCell(3).innerText = product.numberOfSales;
+        });
+
+        connection.on("DeleteProduct", function (productId) {
+            const row = document.getElementById(`product-${productId}`);
+            if (row) {
+                row.remove();
+            }
+        });
+
+        connection.on("BuyProduct", function (product) {
+            const row = document.getElementById(`product-${product.id}`);
+            if (row) {
+                row.cells[2].innerText = product.numberOfItemsInStock;
+                row.cells[3].innerText = product.numberOfSales;
+            }
+        });
+
+        connection.on("MostSoldProduct", function (product) {
+            const mostSoldProductText = document.getElementById("mostSoldProductText");
+            mostSoldProductText.innerText = "Most sold product is: " + product.name;
+            console.log(product.name);
+        });
+
+        connection.start().catch(function (err) {
+            return console.error(err.toString());
+        });
+    </script>
+}
